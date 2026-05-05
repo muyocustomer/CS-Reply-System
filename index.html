@@ -545,9 +545,16 @@ window.setTone = function(el, tone) {
   el.classList.add('active');
 }
 
-window.generateAI = function() {
+window.generateAI = async function() {
   const msg = document.getElementById('customer-msg').value.trim();
   if(!msg) { showToast('請先貼上客人訊息！'); return; }
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.innerHTML = '生成中...';
+
+  const area = document.getElementById('ai-result-area');
+  area.innerHTML = `<div class="loading"><div class="dots"><span></span><span></span><span></span></div><span>AI 正在生成回覆...</span></div>`;
 
   const toneMap = {
     formal:'請用正式、有禮貌、專業的客服語氣回覆，稱呼客人為「您」',
@@ -560,43 +567,37 @@ window.generateAI = function() {
     `【${t.title}】${(t.variants||[])[0]?.content?.slice(0,50)||''}...`
   ).join('\n');
 
-  const prompt = `你是電商客服專員，請幫我回覆以下客人訊息。
+  const prompt = `你是電商客服專員，請幫我回覆以下客人訊息。\n${toneMap[selectedToneVal]}\n${catHint ? '情境類型：'+catHint+'\n' : ''}${topSamples ? '公司話術風格參考：\n'+topSamples+'\n' : ''}客人訊息：「${msg}」\n請直接輸出回覆內容，不需要說明或標題。`;
 
-${toneMap[selectedToneVal]}
-${catHint ? `情境類型：${catHint}` : ''}
-${topSamples ? `\n公司話術風格參考：\n${topSamples}` : ''}
+  try {
+    const res = await fetch('https://cs-ai-proxy.muyo-customer.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    const reply = data.reply || '生成失敗，請再試一次';
 
-客人訊息：「${msg}」
-
-請直接輸出回覆內容，不需要說明或標題。`;
-
-  navigator.clipboard.writeText(prompt).then(() => {
-    const area = document.getElementById('ai-result-area');
     area.innerHTML = `
-      <div class="result-box" style="border-color:rgba(26,140,106,0.3);background:var(--green-light)">
+      <div class="result-box">
         <div class="result-label">
           <span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block"></span>
-          提示詞已複製！
+          AI 生成回覆
         </div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.9;margin-bottom:14px">
-          <strong>接下來兩個步驟：</strong><br>
-          1️⃣ 點下方按鈕開啟 Claude.ai<br>
-          2️⃣ 直接按 Ctrl+V（Mac 用 Cmd+V）貼上送出
-        </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text3);line-height:1.6;margin-bottom:14px;max-height:120px;overflow-y:auto;white-space:pre-wrap">${prompt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        <div class="result-text" id="ai-reply-text">${escH(reply)}</div>
         <div class="result-actions">
-          <a href="https://claude.ai" target="_blank" class="btn btn-primary btn-sm" style="text-decoration:none">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            開啟 Claude.ai
-          </a>
-          <button class="btn btn-ghost btn-sm" onclick="window.generateAI()">📋 重新複製提示詞</button>
+          <button class="btn btn-success btn-sm" onclick="copyAIReply(this)">📋 複製</button>
+          <button class="btn btn-primary btn-sm" onclick="window.generateAI()">🔄 重新生成</button>
+          <button class="btn btn-ghost btn-sm" onclick="saveAIAsVariant()">💾 存入話術庫</button>
         </div>
       </div>
     `;
-    showToast('提示詞已複製！');
-  }).catch(() => {
-    showToast('請手動複製提示詞');
-  });
+  } catch(e) {
+    area.innerHTML = `<div style="color:#c84030;font-size:13px;padding:16px;background:#fff0ee;border-radius:10px;border:1px solid #ffd0c8">⚠️ 生成失敗：${e.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 生成回覆草稿';
 }
 
 window.copyAIReply = function(btn) {

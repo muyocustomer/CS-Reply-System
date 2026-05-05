@@ -568,7 +568,7 @@ window.generateAI = async function() {
 
   const catHint = document.getElementById('ai-cat-select').value;
 
-  const GEMINI_KEY = 'AIzaSyA3GWyz9ab1R5rTL0yDaa93Lz7ylM9x5Lg';
+  const GEMINI_KEY = 'AIzaSyASqg42moHlm93gqxo8GZAk-ap4JXCkUu8';
   try {
     const systemPrompt = `你是電商客服專員。請根據客人訊息生成一則專業的客服回覆。
 語氣要求：${toneMap[selectedToneVal]}
@@ -577,7 +577,7 @@ ${catHint ? `情境分類：${catHint}` : ''}
 ${topSamples}
 請直接輸出回覆內容，不需要說明、不需要標題、不需要引號包裹。`;
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({

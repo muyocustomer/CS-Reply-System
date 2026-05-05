@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>客服回覆系統</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f3ef;
+  --surface:#ffffff;
+  --surface2:#f0ede8;
+  --surface3:#e8e4de;
+  --accent:#c8502a;
+  --accent-light:#f0e8e4;
+  --accent2:#e8834a;
+  --green:#1a8c6a;
+  --green-light:#e4f5ef;
+  --blue:#2a5fa8;
+  --blue-light:#e8eef8;
+  --border:#ddd8d0;
+  --border-strong:#c8c0b8;
+  --text:#1a1814;
+  --text2:#4a4540;
+  --text3:#8a8078;
+  --shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 12px rgba(0,0,0,0.04);
+  --shadow-lg:0 4px 16px rgba(0,0,0,0.1),0 8px 32px rgba(0,0,0,0.06);
+  font-family:'Noto Sans TC',sans-serif;
+}
+
+body{background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
+
+/* layout */
+.app{display:grid;grid-template-rows:60px 44px 1fr;height:100vh;max-height:100vh;overflow:hidden}
+.header{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;box-shadow:var(--shadow)}
+.logo{width:34px;height:34px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo svg{color:#fff}
+.app-title{font-size:15px;font-weight:700;color:var(--text);letter-spacing:0.02em}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.status-text{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+.user-badge{padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;font-size:11px;color:var(--text2);font-weight:500}
+
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;gap:0}
+.tab{padding:0 18px;height:44px;font-size:13px;font-weight:500;color:var(--text3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;transition:all .2s;display:flex;align-items:center;gap:6px}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--text2)}
+.tab-badge{min-width:18px;height:18px;border-radius:99px;background:var(--accent-light);color:var(--accent);font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+
+.content{display:grid;overflow:hidden}
+
+/* pages */
+.page{display:none;height:100%;overflow:hidden}
+.page.active{display:grid}
+.page-search{grid-template-columns:360px 1fr}
+.page-ai{grid-template-columns:1fr 1fr}
+.page-manage{grid-template-rows:1fr;grid-template-columns:1fr}
+
+/* panes */
+.pane{padding:20px 24px;overflow-y:auto;border-right:1px solid var(--border);background:var(--surface)}
+.pane:last-child{border-right:none;background:var(--bg)}
+.pane-label{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:14px}
+
+/* inputs */
+.input{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border .15s,box-shadow .15s}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,80,42,0.08)}
+.input::placeholder{color:var(--text3)}
+.textarea{min-height:90px;resize:vertical;line-height:1.65}
+
+/* buttons */
+.btn{padding:9px 16px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(200,80,42,0.25)}
+.btn-primary:hover{background:#b8451f;box-shadow:0 4px 12px rgba(200,80,42,0.3);transform:translateY(-1px)}
+.btn-success{background:var(--green);color:#fff;box-shadow:0 2px 8px rgba(26,140,106,0.2)}
+.btn-success:hover{background:#15785c;transform:translateY(-1px)}
+.btn-ghost{background:var(--surface);border:1.5px solid var(--border);color:var(--text2)}
+.btn-ghost:hover{background:var(--surface2);border-color:var(--border-strong)}
+.btn-danger{background:#fff0ee;border:1.5px solid #ffd0c8;color:#c84030}
+.btn-danger:hover{background:#ffe4e0}
+.btn-sm{padding:6px 11px;font-size:12px;border-radius:7px}
+.btn-xs{padding:4px 8px;font-size:11px;border-radius:6px}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none!important}
+
+/* search */
+.search-wrap{position:relative;margin-bottom:12px}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+.search-input{padding-left:34px!important}
+
+/* filter chips */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600;border:1.5px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;transition:all .15s}
+.chip.active,.chip:hover{background:var(--accent-light);color:var(--accent);border-color:rgba(200,80,42,0.3)}
+
+/* template cards */
+.card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all .15s;position:relative}
+.card:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.card.active{border-color:var(--accent);background:var(--accent-light);box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px}
+.card-title{font-size:13px;font-weight:600;color:var(--text);flex:1;line-height:1.4}
+.card-meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700}
+.badge-cat{background:var(--blue-light);color:var(--blue)}
+.badge-count{background:var(--green-light);color:var(--green)}
+.card-preview{font-size:12px;color:var(--text3);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.card-copy{position:absolute;right:10px;top:10px;opacity:0;transition:opacity .15s}
+.card:hover .card-copy{opacity:1}
+
+/* preview panel */
+.preview-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:12px;text-align:center}
+.preview-empty svg{opacity:0.25}
+.preview-empty p{font-size:13px;line-height:1.7}
+
+.preview-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:20px;margin-bottom:12px;box-shadow:var(--shadow)}
+.preview-header{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.preview-title{font-size:15px;font-weight:700;color:var(--text);flex:1}
+.preview-body{font-size:13px;line-height:1.8;color:var(--text2);white-space:pre-wrap}
+.preview-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+
+/* variants */
+.variants-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin:16px 0 8px}
+.variant-item{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.variant-item:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.variant-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.variant-name{font-size:12px;font-weight:600;color:var(--text2);flex:1}
+.variant-preview{font-size:12px;color:var(--text3);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.5}
+
+/* AI pane */
+.ai-box{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+.ai-box-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.tone-row{display:flex;gap:6px;margin-bottom:14px}
+.tone-btn{flex:1;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;color:var(--text3);cursor:pointer;text-align:center;transition:all .15s;font-family:inherit}
+.tone-btn.active{background:var(--accent-light);color:var(--accent);border-color:rgba(200,80,42,0.3)}
+
+.result-box{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;box-shadow:var(--shadow)}
+.result-label{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.result-text{font-size:13px;line-height:1.8;color:var(--text);white-space:pre-wrap}
+.result-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+
+.loading{display:flex;align-items:center;gap:10px;padding:20px 0;color:var(--text3);font-size:13px}
+.dots{display:flex;gap:4px}
+.dots span{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:bounce 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}
+.dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.3}40%{transform:translateY(-5px);opacity:1}}
+
+/* manage */
+.manage-layout{display:grid;grid-template-columns:1fr 1fr;height:100%;overflow:hidden}
+.manage-left{padding:20px 24px;overflow-y:auto;border-right:1px solid var(--border);background:var(--surface)}
+.manage-right{padding:20px 24px;overflow-y:auto;background:var(--bg)}
+
+.section-head{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.section-title{font-size:13px;font-weight:700;color:var(--text);flex:1}
+
+/* form */
+.form-group{margin-bottom:14px}
+.form-label{font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--text2);margin-bottom:5px;display:block}
+.form-hint{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* manage card */
+.manage-card{background:var(--surface);border:1.5px solid var(--border);border-radius:11px;padding:13px 14px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.manage-card:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.manage-card.active{border-color:var(--accent);background:var(--accent-light)}
+.manage-card-head{display:flex;align-items:center;gap:8px}
+.manage-card-title{font-size:13px;font-weight:600;flex:1}
+.manage-card-meta{font-size:11px;color:var(--text3);margin-top:3px}
+
+/* highlight */
+mark{background:rgba(200,80,42,0.15);color:var(--accent);border-radius:2px;padding:0 1px}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:99px}
+
+/* toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);z-index:999;animation:slideup .2s ease;pointer-events:none}
+@keyframes slideup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.divider{height:1px;background:var(--border);margin:16px 0}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3)}
+.empty-state p{font-size:13px;margin-top:8px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <div class="app-title">客服回覆系統</div>
+    <div class="header-right">
+      <div class="status-dot" id="db-dot" style="background:#ccc"></div>
+      <span class="status-text" id="db-status">連線中...</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('search')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      關鍵字搜尋
+    </button>
+    <button class="tab" onclick="switchTab('ai')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      AI 生成回覆
+    </button>
+    <button class="tab" onclick="switchTab('manage')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      管理話術庫
+      <span class="tab-badge" id="tab-count">0</span>
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- TAB: SEARCH -->
+    <div id="tab-search" class="page page-search active">
+      <div class="pane">
+        <div class="pane-label">搜尋話術</div>
+        <div class="search-wrap">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input class="input search-input" id="search-kw" placeholder="輸入關鍵字，例如：退貨、出貨、優惠..." oninput="doSearch()" autocomplete="off">
+        </div>
+        <div class="chips" id="cat-chips"></div>
+        <div id="search-results"></div>
+      </div>
+      <div class="pane" style="background:var(--bg)">
+        <div id="preview-panel">
+          <div class="preview-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            <p>點選左側話術卡片<br>即可預覽完整內容</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: AI -->
+    <div id="tab-ai" class="page page-ai">
+      <div class="pane">
+        <div class="pane-label">客人訊息</div>
+        <div class="ai-box">
+          <div class="ai-box-label">貼上客人說的話</div>
+          <textarea class="input textarea" id="customer-msg" placeholder="把客人傳來的訊息貼在這裡&#10;&#10;例如：「我昨天下單怎麼還沒出貨？我需要後天就收到」" style="min-height:110px"></textarea>
+        </div>
+        <div class="form-group">
+          <div class="form-label">回覆語氣</div>
+          <div class="tone-row">
+            <button class="tone-btn active" onclick="setTone(this,'formal')">正式客氣</button>
+            <button class="tone-btn" onclick="setTone(this,'friendly')">親切活潑</button>
+            <button class="tone-btn" onclick="setTone(this,'brief')">簡短精準</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="form-label">參考分類（選填）</div>
+          <select class="input" id="ai-cat-select">
+            <option value="">自動判斷</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="generateAI()" id="gen-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          生成回覆草稿
+        </button>
+      </div>
+      <div class="pane" style="background:var(--bg)">
+        <div class="pane-label">AI 生成結果</div>
+        <div id="ai-result-area">
+          <div class="preview-empty" style="height:200px">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <p>在左側貼上客人訊息<br>點擊「生成回覆草稿」</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: MANAGE -->
+    <div id="tab-manage" class="page" style="display:none">
+      <div class="manage-layout">
+        <div class="manage-left">
+          <div class="section-head">
+            <div class="section-title">所有話術情境</div>
+            <button class="btn btn-primary btn-sm" onclick="openNewTopic()">＋ 新增情境</button>
+          </div>
+          <div id="topic-list"></div>
+        </div>
+        <div class="manage-right">
+          <div id="topic-detail">
+            <div class="preview-empty" style="height:200px">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <p>點選左側情境<br>即可管理回覆版本</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCImTuxU0xakd_-1fWmXhRN6btK8VFCWV8",
+  authDomain: "cs-reply-system.firebaseapp.com",
+  projectId: "cs-reply-system",
+  storageBucket: "cs-reply-system.firebasestorage.app",
+  messagingSenderId: "559628938945",
+  appId: "1:559628938945:web:cc60724e0ddeae0bd16e40"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ─── Global State ───────────────────────────────────────────
+let topics = []; // [{id, title, cat, keywords:[], variants:[{name,content}]}]
+let selectedTopicId = null;
+let selectedVariantIdx = null;
+let activeCat = '';
+let selectedToneVal = 'formal';
+let editingTopicId = null;
+
+// ─── DB helpers ─────────────────────────────────────────────
+const col = () => collection(db, 'topics');
+
+async function loadTopics() {
+  try {
+    const snap = await getDocs(query(col(), orderBy('createdAt','asc')));
+    topics = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    onLoaded();
+  } catch(e) {
+    setStatus(false);
+    console.error(e);
+  }
+}
+
+async function saveTopic(data) {
+  const ref = await addDoc(col(), {...data, createdAt: Date.now()});
+  return ref.id;
+}
+
+async function updateTopic(id, data) {
+  await updateDoc(doc(db, 'topics', id), data);
+}
+
+async function deleteTopic(id) {
+  await deleteDoc(doc(db, 'topics', id));
+}
+
+function setStatus(ok) {
+  document.getElementById('db-dot').style.background = ok ? 'var(--green)' : '#e85050';
+  document.getElementById('db-status').textContent = ok ? '已連線' : '連線失敗';
+}
+
+function onLoaded() {
+  setStatus(true);
+  updateTabCount();
+  renderCatChips();
+  doSearch();
+  renderTopicList();
+  populateAICatSelect();
+}
+
+// ─── Tabs ────────────────────────────────────────────────────
+window.switchTab = function(tab) {
+  ['search','ai','manage'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = 'none';
+    document.getElementById(`tab-${t}`).classList.remove('active');
+  });
+  const el = document.getElementById(`tab-${tab}`);
+  if(tab === 'manage') {
+    el.style.display = 'block';
+    renderTopicList();
+  } else {
+    el.style.display = 'grid';
+  }
+  el.classList.add('active');
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['search','ai','manage'][i] === tab);
+  });
+}
+
+function updateTabCount() {
+  document.getElementById('tab-count').textContent = topics.length;
+}
+
+// ─── Categories ──────────────────────────────────────────────
+function getCats() {
+  return [...new Set(topics.map(t => t.cat).filter(Boolean))];
+}
+
+function renderCatChips() {
+  const cats = getCats();
+  document.getElementById('cat-chips').innerHTML =
+    `<button class="chip ${activeCat===''?'active':''}" onclick="setCat('')">全部</button>` +
+    cats.map(c => `<button class="chip ${activeCat===c?'active':''}" onclick="setCat('${c}')">${c}</button>`).join('');
+}
+
+window.setCat = function(cat) {
+  activeCat = cat;
+  renderCatChips();
+  doSearch();
+}
+
+function populateAICatSelect() {
+  const sel = document.getElementById('ai-cat-select');
+  const cats = getCats();
+  sel.innerHTML = `<option value="">自動判斷</option>` + cats.map(c=>`<option>${c}</option>`).join('');
+}
+
+// ─── Search ──────────────────────────────────────────────────
+window.doSearch = function() {
+  const kw = document.getElementById('search-kw').value.trim().toLowerCase();
+  let list = topics;
+  if(activeCat) list = list.filter(t => t.cat === activeCat);
+  if(kw) list = list.filter(t =>
+    t.title?.toLowerCase().includes(kw) ||
+    t.cat?.toLowerCase().includes(kw) ||
+    (t.keywords||[]).some(k => k.toLowerCase().includes(kw)) ||
+    (t.variants||[]).some(v => v.content?.toLowerCase().includes(kw))
+  );
+  renderSearchResults(list, kw);
+}
+
+function hl(text, kw) {
+  if(!kw || !text) return escH(text||'');
+  const re = new RegExp(`(${kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return escH(text).replace(re, '<mark>$1</mark>');
+}
+function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+
+function renderSearchResults(list, kw='') {
+  const el = document.getElementById('search-results');
+  if(!list.length) {
+    el.innerHTML = `<div class="empty-state"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><p>找不到符合的話術<br>可以到「管理話術庫」新增</p></div>`;
+    return;
+  }
+  el.innerHTML = list.map(t => `
+    <div class="card ${selectedTopicId===t.id?'active':''}" onclick="selectTopic('${t.id}')">
+      <div class="card-head">
+        <div class="card-title">${hl(t.title, kw)}</div>
+        <button class="btn btn-ghost btn-xs card-copy" onclick="event.stopPropagation();copyFirstVariant('${t.id}',this)">複製</button>
+      </div>
+      <div class="card-meta">
+        <span class="badge badge-cat">${escH(t.cat||'未分類')}</span>
+        <span class="badge badge-count">${(t.variants||[]).length} 個版本</span>
+      </div>
+      <div class="card-preview" style="margin-top:6px">${hl((t.variants||[])[0]?.content?.slice(0,80)||'（尚無內容）', kw)}...</div>
+    </div>
+  `).join('');
+}
+
+window.selectTopic = function(id) {
+  selectedTopicId = id;
+  selectedVariantIdx = 0;
+  doSearch();
+  renderPreview();
+}
+
+function renderPreview() {
+  const t = topics.find(x => x.id === selectedTopicId);
+  if(!t) return;
+  const variants = t.variants || [];
+  const panel = document.getElementById('preview-panel');
+
+  panel.innerHTML = `
+    <div class="preview-card">
+      <div class="preview-header">
+        <div class="preview-title">${escH(t.title)}</div>
+        <span class="badge badge-cat">${escH(t.cat||'未分類')}</span>
+      </div>
+      ${variants.length === 0 ? '<p style="color:var(--text3);font-size:13px">尚無回覆版本</p>' : ''}
+      ${variants.length > 0 ? `
+        <div class="preview-body" id="preview-text">${escH(variants[selectedVariantIdx||0].content)}</div>
+        <div class="preview-actions">
+          <button class="btn btn-success btn-sm" onclick="copyPreview()">📋 複製回覆</button>
+          <button class="btn btn-ghost btn-sm" onclick="useInAI('${t.id}')">✨ AI 加工</button>
+        </div>
+      ` : ''}
+    </div>
+    ${variants.length > 1 ? `
+      <div class="variants-label">其他版本（共 ${variants.length} 個）</div>
+      ${variants.map((v,i) => `
+        <div class="variant-item ${selectedVariantIdx===i?'active':''}" onclick="selectVariant(${i})" style="${selectedVariantIdx===i?'border-color:var(--accent);background:var(--accent-light)':''}">
+          <div class="variant-head">
+            <div class="variant-name">${escH(v.name||`版本 ${i+1}`)}</div>
+            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();copyVariant(${i},'${t.id}',this)">複製</button>
+          </div>
+          <div class="variant-preview">${escH(v.content?.slice(0,80)||'')}...</div>
+        </div>
+      `).join('')}
+    ` : ''}
+    ${(t.keywords||[]).length > 0 ? `
+      <div class="divider"></div>
+      <div class="pane-label">關鍵字標籤</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+        ${(t.keywords||[]).map(k=>`<span class="badge badge-cat">${escH(k)}</span>`).join('')}
+      </div>
+    ` : ''}
+  `;
+}
+
+window.selectVariant = function(idx) {
+  selectedVariantIdx = idx;
+  renderPreview();
+}
+
+window.copyPreview = function() {
+  const t = topics.find(x => x.id === selectedTopicId);
+  if(!t) return;
+  const text = (t.variants||[])[selectedVariantIdx||0]?.content;
+  if(text) { navigator.clipboard.writeText(text); showToast('已複製！'); }
+}
+
+window.copyFirstVariant = function(id, btn) {
+  const t = topics.find(x => x.id === id);
+  const text = (t?.variants||[])[0]?.content;
+  if(text) { navigator.clipboard.writeText(text); btn.textContent='✓'; setTimeout(()=>btn.textContent='複製',1500); }
+}
+
+window.copyVariant = function(idx, topicId, btn) {
+  const t = topics.find(x => x.id === topicId);
+  const text = (t?.variants||[])[idx]?.content;
+  if(text) { navigator.clipboard.writeText(text); btn.textContent='✓'; setTimeout(()=>btn.textContent='複製',1500); showToast('已複製！'); }
+}
+
+window.useInAI = function(id) {
+  const t = topics.find(x => x.id === id);
+  if(!t) return;
+  const text = (t.variants||[])[0]?.content || '';
+  switchTab('ai');
+  document.getElementById('customer-msg').value = `（請參考這個情境改寫）\n\n${text}`;
+}
+
+// ─── AI Generate ─────────────────────────────────────────────
+window.setTone = function(el, tone) {
+  selectedToneVal = tone;
+  document.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+window.generateAI = async function() {
+  const msg = document.getElementById('customer-msg').value.trim();
+  if(!msg) { showToast('請先貼上客人訊息！'); return; }
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.innerHTML = '生成中...';
+
+  const area = document.getElementById('ai-result-area');
+  area.innerHTML = `<div class="loading"><div class="dots"><span></span><span></span><span></span></div><span>AI 正在生成回覆...</span></div>`;
+
+  const toneMap = {
+    formal:'正式、有禮貌、專業的客服語氣，使用「您」稱呼客人',
+    friendly:'親切活潑、有溫度，可以適當使用 emoji，讓客人感到被關心',
+    brief:'簡短精準，3句話以內直接解決問題'
+  };
+
+  const topSamples = topics.slice(0,10).map(t =>
+    `【${t.title}(${t.cat})】${(t.variants||[])[0]?.content?.slice(0,60)||''}...`
+  ).join('\n');
+
+  const catHint = document.getElementById('ai-cat-select').value;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:`你是電商客服專員。請根據客人訊息生成一則專業的客服回覆。
+語氣要求：${toneMap[selectedToneVal]}
+${catHint ? `情境分類：${catHint}` : ''}
+以下是公司的公版話術供風格參考：
+${topSamples}
+請直接輸出回覆內容，不需要說明、不需要標題、不需要引號包裹。`,
+        messages:[{role:'user', content:`客人訊息：${msg}`}]
+      })
+    });
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || '生成失敗，請再試一次';
+
+    area.innerHTML = `
+      <div class="result-box">
+        <div class="result-label">
+          <span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block"></span>
+          AI 生成回覆
+        </div>
+        <div class="result-text" id="ai-reply-text">${escH(reply)}</div>
+        <div class="result-actions">
+          <button class="btn btn-success btn-sm" onclick="copyAIReply(this)">📋 複製</button>
+          <button class="btn btn-primary btn-sm" onclick="window.generateAI()">🔄 重新生成</button>
+          <button class="btn btn-ghost btn-sm" onclick="saveAIAsVariant()">💾 存入話術庫</button>
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    area.innerHTML = `<div style="color:#c84030;font-size:13px;padding:16px;background:#fff0ee;border-radius:10px;border:1px solid #ffd0c8">⚠️ 生成失敗：${e.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> 生成回覆草稿';
+}
+
+window.copyAIReply = function(btn) {
+  const text = document.getElementById('ai-reply-text')?.textContent;
+  if(text) { navigator.clipboard.writeText(text); btn.textContent='✓ 已複製'; setTimeout(()=>btn.textContent='📋 複製',1500); showToast('已複製！'); }
+}
+
+window.saveAIAsVariant = function() {
+  const text = document.getElementById('ai-reply-text')?.textContent;
+  if(!text) return;
+  switchTab('manage');
+  openNewTopic(text);
+}
+
+// ─── Manage ──────────────────────────────────────────────────
+function renderTopicList() {
+  const el = document.getElementById('topic-list');
+  if(!topics.length) {
+    el.innerHTML = `<div class="empty-state"><p>還沒有話術情境<br>點「＋ 新增情境」開始建立</p></div>`;
+    return;
+  }
+  const cats = getCats();
+  let html = '';
+  if(cats.length) {
+    cats.forEach(cat => {
+      const catTopics = topics.filter(t => t.cat === cat);
+      html += `<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">${escH(cat)}</div>`;
+      html += catTopics.map(t => renderManageCard(t)).join('');
+    });
+    const noCat = topics.filter(t => !t.cat);
+    if(noCat.length) {
+      html += `<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin:14px 0 6px">未分類</div>`;
+      html += noCat.map(t => renderManageCard(t)).join('');
+    }
+  } else {
+    html = topics.map(t => renderManageCard(t)).join('');
+  }
+  el.innerHTML = html;
+}
+
+function renderManageCard(t) {
+  return `
+    <div class="manage-card ${editingTopicId===t.id?'active':''}" onclick="openEditTopic('${t.id}')">
+      <div class="manage-card-head">
+        <div class="manage-card-title">${escH(t.title)}</div>
+        <span class="badge badge-count">${(t.variants||[]).length} 版本</span>
+      </div>
+      <div class="manage-card-meta">${(t.keywords||[]).slice(0,4).join(' · ')||'無關鍵字'}</div>
+    </div>
+  `;
+}
+
+window.openNewTopic = function(prefillContent='') {
+  editingTopicId = null;
+  renderTopicDetail(null, prefillContent);
+}
+
+window.openEditTopic = function(id) {
+  editingTopicId = id;
+  renderTopicList();
+  renderTopicDetail(id);
+}
+
+function renderTopicDetail(id, prefillContent='') {
+  const t = id ? topics.find(x => x.id === id) : null;
+  const variants = t?.variants || (prefillContent ? [{name:'版本1',content:prefillContent}] : []);
+  const el = document.getElementById('topic-detail');
+
+  el.innerHTML = `
+    <div style="margin-bottom:16px;display:flex;align-items:center;gap:8px">
+      <div style="font-size:14px;font-weight:700;color:var(--text);flex:1">${t ? '編輯情境' : '新增情境'}</div>
+      ${t ? `<button class="btn btn-danger btn-sm" onclick="confirmDeleteTopic('${t.id}')">刪除</button>` : ''}
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">情境名稱 *</label>
+      <input class="input" id="f-title" placeholder="例如：詢問出貨時間" value="${escH(t?.title||'')}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">分類</label>
+      <input class="input" id="f-cat" placeholder="例如：出貨物流" value="${escH(t?.cat||'')}" list="cat-datalist">
+      <datalist id="cat-datalist">${getCats().map(c=>`<option value="${escH(c)}">`).join('')}</datalist>
+    </div>
+    <div class="form-group">
+      <label class="form-label">關鍵字</label>
+      <input class="input" id="f-kw" placeholder="用逗號分隔，例如：出貨,發貨,幾天" value="${escH((t?.keywords||[]).join(','))}">
+      <div class="form-hint">客服搜尋這些字時會找到此情境</div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-head">
+      <div class="section-title">回覆版本</div>
+      <button class="btn btn-ghost btn-sm" onclick="addVariantField()">＋ 新增版本</button>
+    </div>
+    <div id="variants-area">
+      ${variants.map((v,i) => variantField(v, i)).join('')}
+      ${variants.length===0 ? `<div class="empty-state" style="padding:20px"><p>還沒有回覆版本<br>點「＋ 新增版本」加入</p></div>` : ''}
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveTopicForm('${t?.id||''}')">
+        ${t ? '儲存變更' : '建立情境'}
+      </button>
+      <button class="btn btn-ghost" onclick="cancelEdit()">取消</button>
+    </div>
+  `;
+}
+
+function variantField(v, i) {
+  return `
+    <div class="ai-box" id="variant-${i}" style="margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input class="input" id="vname-${i}" placeholder="版本名稱（例如：強硬版、溫和版）" value="${escH(v.name||`版本${i+1}`)}" style="flex:1;padding:6px 10px;font-size:12px">
+        <button class="btn btn-danger btn-xs" onclick="removeVariant(${i})">✕</button>
+      </div>
+      <textarea class="input textarea" id="vcontent-${i}" style="min-height:80px;font-size:12px" placeholder="回覆內容...">${escH(v.content||'')}</textarea>
+    </div>
+  `;
+}
+
+let variantCount = 0;
+window.addVariantField = function() {
+  const area = document.getElementById('variants-area');
+  const empties = area.querySelectorAll('.empty-state');
+  empties.forEach(e => e.remove());
+  variantCount = area.querySelectorAll('.ai-box').length;
+  const div = document.createElement('div');
+  div.innerHTML = variantField({name:`版本${variantCount+1}`,content:''}, variantCount);
+  area.appendChild(div.firstElementChild);
+}
+
+window.removeVariant = function(i) {
+  document.getElementById(`variant-${i}`)?.remove();
+}
+
+window.saveTopicForm = async function(existingId) {
+  const title = document.getElementById('f-title').value.trim();
+  if(!title) { showToast('請填寫情境名稱！'); return; }
+  const cat = document.getElementById('f-cat').value.trim();
+  const kw = document.getElementById('f-kw').value.split(',').map(k=>k.trim()).filter(Boolean);
+
+  const variantEls = document.getElementById('variants-area').querySelectorAll('.ai-box');
+  const variants = [];
+  variantEls.forEach((el,i) => {
+    const name = el.querySelector(`[id^="vname-"]`)?.value?.trim() || `版本${i+1}`;
+    const content = el.querySelector(`[id^="vcontent-"]`)?.value?.trim() || '';
+    if(content) variants.push({name, content});
+  });
+
+  const data = {title, cat, keywords:kw, variants};
+
+  try {
+    if(existingId) {
+      await updateTopic(existingId, data);
+      const idx = topics.findIndex(t => t.id === existingId);
+      if(idx > -1) topics[idx] = {...topics[idx], ...data};
+    } else {
+      const newId = await saveTopic(data);
+      topics.push({id:newId, ...data, createdAt:Date.now()});
+    }
+    editingTopicId = null;
+    showToast(existingId ? '已儲存變更 ✓' : '情境已建立 ✓');
+    updateTabCount();
+    renderCatChips();
+    renderTopicList();
+    populateAICatSelect();
+    doSearch();
+    document.getElementById('topic-detail').innerHTML = `<div class="preview-empty" style="height:200px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><p>儲存成功！<br>點選左側情境繼續編輯</p></div>`;
+  } catch(e) {
+    showToast('儲存失敗：' + e.message);
+  }
+}
+
+window.confirmDeleteTopic = async function(id) {
+  if(!confirm('確定要刪除這個情境嗎？此操作無法復原。')) return;
+  try {
+    await deleteTopic(id);
+    topics = topics.filter(t => t.id !== id);
+    editingTopicId = null;
+    showToast('已刪除');
+    updateTabCount();
+    renderCatChips();
+    renderTopicList();
+    doSearch();
+    document.getElementById('topic-detail').innerHTML = `<div class="preview-empty" style="height:200px"><p>情境已刪除</p></div>`;
+  } catch(e) {
+    showToast('刪除失敗：' + e.message);
+  }
+}
+
+window.cancelEdit = function() {
+  editingTopicId = null;
+  renderTopicList();
+  document.getElementById('topic-detail').innerHTML = `<div class="preview-empty" style="height:200px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><p>點選左側情境<br>即可管理回覆版本</p></div>`;
+}
+
+// ─── Toast ───────────────────────────────────────────────────
+window.showToast = function(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+// ─── Init ────────────────────────────────────────────────────
+loadTopics();
+</script>
+</body>
+</html>

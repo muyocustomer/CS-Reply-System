@@ -213,6 +213,11 @@ mark{background:rgba(200,80,42,0.15);color:var(--accent);border-radius:2px;paddi
       管理話術庫
       <span class="tab-badge" id="tab-count">0</span>
     </button>
+    <button class="tab" onclick="switchTab('product')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+      商品話術庫
+      <span class="tab-badge" id="tab-product-count">0</span>
+    </button>
   </div>
 
   <!-- Content -->
@@ -234,6 +239,31 @@ mark{background:rgba(200,80,42,0.15);color:var(--accent);border-radius:2px;paddi
           <div class="preview-empty">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             <p>點選左側話術卡片<br>即可預覽完整內容</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: PRODUCT -->
+    <div id="tab-product" class="page" style="display:none">
+      <div class="manage-layout">
+        <div class="manage-left">
+          <div class="section-head">
+            <div class="section-title">商品話術庫</div>
+            <button class="btn btn-primary btn-sm" onclick="openNewProduct()">＋ 新增商品</button>
+          </div>
+          <div class="search-wrap" style="margin-bottom:10px">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input class="input search-input" id="product-search" placeholder="搜尋產編或商品名稱..." oninput="searchProducts()" autocomplete="off">
+          </div>
+          <div id="product-list"></div>
+        </div>
+        <div class="manage-right">
+          <div id="product-detail">
+            <div class="preview-empty" style="height:200px">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              <p>點選左側商品<br>即可管理回覆話術</p>
+            </div>
           </div>
         </div>
       </div>
@@ -369,20 +399,23 @@ function onLoaded() {
 
 // ─── Tabs ────────────────────────────────────────────────────
 window.switchTab = function(tab) {
-  ['search','ai','manage'].forEach(t => {
-    document.getElementById(`tab-${t}`).style.display = 'none';
-    document.getElementById(`tab-${t}`).classList.remove('active');
+  ['search','ai','manage','product'].forEach(t => {
+    const el = document.getElementById(`tab-${t}`);
+    if(el) { el.style.display = 'none'; el.classList.remove('active'); }
   });
   const el = document.getElementById(`tab-${tab}`);
   if(tab === 'manage') {
     el.style.display = 'block';
     renderTopicList();
+  } else if(tab === 'product') {
+    el.style.display = 'block';
+    renderProductList();
   } else {
     el.style.display = 'grid';
   }
   el.classList.add('active');
   document.querySelectorAll('.tab').forEach((t,i) => {
-    t.classList.toggle('active', ['search','ai','manage'][i] === tab);
+    t.classList.toggle('active', ['search','ai','manage','product'][i] === tab);
   });
 }
 
@@ -803,8 +836,184 @@ window.showToast = function(msg) {
   setTimeout(() => t.remove(), 2200);
 }
 
+// ─── Product Topics ──────────────────────────────────────────
+let products = []; // [{id, sku, name, replies:[{type,content}]}]
+let selectedProductId = null;
+let editingProductId = null;
+
+const productCol = () => collection(db, 'products');
+
+async function loadProducts() {
+  try {
+    const snap = await getDocs(query(productCol(), orderBy('createdAt','asc')));
+    products = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    updateProductCount();
+    renderProductList();
+  } catch(e) { console.error(e); }
+}
+
+function updateProductCount() {
+  document.getElementById('tab-product-count').textContent = products.length;
+}
+
+window.searchProducts = function() {
+  const kw = document.getElementById('product-search').value.trim().toLowerCase();
+  let list = kw ? products.filter(p =>
+    p.sku?.toLowerCase().includes(kw) ||
+    p.name?.toLowerCase().includes(kw) ||
+    (p.replies||[]).some(r => r.content?.toLowerCase().includes(kw))
+  ) : products;
+  renderProductList(list, kw);
+}
+
+function renderProductList(list, kw='') {
+  list = list || products;
+  const el = document.getElementById('product-list');
+  if(!list.length) {
+    el.innerHTML = `<div class="empty-state"><p>還沒有商品話術<br>點「＋ 新增商品」開始建立</p></div>`;
+    return;
+  }
+  el.innerHTML = list.map(p => `
+    <div class="manage-card ${editingProductId===p.id?'active':''}" onclick="openEditProduct('${p.id}')">
+      <div class="manage-card-head">
+        <div style="display:flex;flex-direction:column;flex:1;gap:2px">
+          <div class="manage-card-title">${hl(p.name||'未命名', kw)}</div>
+          <div style="font-size:11px;color:var(--blue);font-family:'DM Mono',monospace;font-weight:600">${hl(p.sku||'', kw)}</div>
+        </div>
+        <span class="badge badge-count">${(p.replies||[]).length} 條話術</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.openNewProduct = function() {
+  editingProductId = null;
+  renderProductDetail(null);
+}
+
+window.openEditProduct = function(id) {
+  editingProductId = id;
+  renderProductList();
+  renderProductDetail(id);
+}
+
+function renderProductDetail(id) {
+  const p = id ? products.find(x => x.id === id) : null;
+  const replies = p?.replies || [];
+  const el = document.getElementById('product-detail');
+
+  el.innerHTML = `
+    <div style="margin-bottom:16px;display:flex;align-items:center;gap:8px">
+      <div style="font-size:14px;font-weight:700;color:var(--text);flex:1">${p ? '編輯商品話術' : '新增商品'}</div>
+      ${p ? `<button class="btn btn-danger btn-sm" onclick="confirmDeleteProduct('${p.id}')">刪除</button>` : ''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="form-group" style="margin:0">
+        <label class="form-label">產編 *</label>
+        <input class="input" id="p-sku" placeholder="例如：AB-001" value="${escH(p?.sku||'')}">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">商品名稱 *</label>
+        <input class="input" id="p-name" placeholder="例如：經典連帽外套" value="${escH(p?.name||'')}">
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="section-head">
+      <div class="section-title">回覆話術</div>
+      <button class="btn btn-ghost btn-sm" onclick="addReplyField()">＋ 新增話術</button>
+    </div>
+    <div id="replies-area">
+      ${replies.map((r,i) => replyField(r, i)).join('')}
+      ${replies.length===0 ? `<div class="empty-state" style="padding:20px"><p>還沒有話術<br>點「＋ 新增話術」加入</p></div>` : ''}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveProductForm('${p?.id||''}')">
+        ${p ? '儲存變更' : '建立商品'}
+      </button>
+      <button class="btn btn-ghost" onclick="cancelProductEdit()">取消</button>
+    </div>
+  `;
+}
+
+function replyField(r, i) {
+  return `
+    <div class="ai-box" id="reply-${i}" style="margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input class="input" id="rtype-${i}" placeholder="問題類型（例如：尺寸說明、材質問題）" value="${escH(r.type||'')}" style="flex:1;padding:6px 10px;font-size:12px">
+        <button class="btn btn-danger btn-xs" onclick="removeReply(${i})">✕</button>
+      </div>
+      <textarea class="input textarea" id="rcontent-${i}" style="min-height:80px;font-size:12px" placeholder="回覆內容...">${escH(r.content||'')}</textarea>
+    </div>
+  `;
+}
+
+window.addReplyField = function() {
+  const area = document.getElementById('replies-area');
+  const empties = area.querySelectorAll('.empty-state');
+  empties.forEach(e => e.remove());
+  const count = area.querySelectorAll('.ai-box').length;
+  const div = document.createElement('div');
+  div.innerHTML = replyField({type:'',content:''}, count);
+  area.appendChild(div.firstElementChild);
+}
+
+window.removeReply = function(i) {
+  document.getElementById(`reply-${i}`)?.remove();
+}
+
+window.saveProductForm = async function(existingId) {
+  const sku = document.getElementById('p-sku').value.trim();
+  const name = document.getElementById('p-name').value.trim();
+  if(!sku || !name) { showToast('請填寫產編和商品名稱！'); return; }
+
+  const replyEls = document.getElementById('replies-area').querySelectorAll('.ai-box');
+  const replies = [];
+  replyEls.forEach((el,i) => {
+    const type = el.querySelector(`[id^="rtype-"]`)?.value?.trim() || '';
+    const content = el.querySelector(`[id^="rcontent-"]`)?.value?.trim() || '';
+    if(content) replies.push({type, content});
+  });
+
+  const data = {sku, name, replies};
+  try {
+    if(existingId) {
+      await updateDoc(doc(db, 'products', existingId), data);
+      const idx = products.findIndex(p => p.id === existingId);
+      if(idx > -1) products[idx] = {...products[idx], ...data};
+    } else {
+      const ref = await addDoc(productCol(), {...data, createdAt: Date.now()});
+      products.push({id: ref.id, ...data, createdAt: Date.now()});
+    }
+    editingProductId = null;
+    showToast(existingId ? '已儲存變更 ✓' : '商品已建立 ✓');
+    updateProductCount();
+    renderProductList();
+    document.getElementById('product-detail').innerHTML = `<div class="preview-empty" style="height:200px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><p>儲存成功！<br>點選左側商品繼續編輯</p></div>`;
+  } catch(e) { showToast('儲存失敗：' + e.message); }
+}
+
+window.confirmDeleteProduct = async function(id) {
+  if(!confirm('確定刪除這個商品的所有話術？')) return;
+  try {
+    await deleteDoc(doc(db, 'products', id));
+    products = products.filter(p => p.id !== id);
+    editingProductId = null;
+    showToast('已刪除');
+    updateProductCount();
+    renderProductList();
+    document.getElementById('product-detail').innerHTML = `<div class="preview-empty" style="height:200px"><p>已刪除</p></div>`;
+  } catch(e) { showToast('刪除失敗：' + e.message); }
+}
+
+window.cancelProductEdit = function() {
+  editingProductId = null;
+  renderProductList();
+  document.getElementById('product-detail').innerHTML = `<div class="preview-empty" style="height:200px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><p>點選左側商品<br>即可管理回覆話術</p></div>`;
+}
+
 // ─── Init ────────────────────────────────────────────────────
 loadTopics();
+loadProducts();
 </script>
 </body>
 </html>

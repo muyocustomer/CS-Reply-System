@@ -598,18 +598,36 @@ window.generateAI = async function() {
   const catHint = document.getElementById('ai-cat-select').value;
   const topSamples = topics.slice(0,6).map(t =>
     `【${t.title}】${(t.variants||[])[0]?.content?.slice(0,50)||''}...`
-  ).join('\n');
+  ).join('
+');
 
-  const prompt = `你是電商客服專員，請幫我回覆以下客人訊息。\n${toneMap[selectedToneVal]}\n${catHint ? '情境類型：'+catHint+'\n' : ''}${topSamples ? '公司話術風格參考：\n'+topSamples+'\n' : ''}客人訊息：「${msg}」\n請直接輸出回覆內容，不需要說明或標題。`;
+  const prompt = `你是電商客服專員，請幫我回覆以下客人訊息。
+${toneMap[selectedToneVal]}
+${catHint ? '情境類型：'+catHint+'
+' : ''}${topSamples ? '公司話術風格參考：
+'+topSamples+'
+' : ''}客人訊息：「${msg}」
+請直接輸出回覆內容，不需要說明或標題。`;
 
   try {
-    const res = await fetch('https://cs-ai-proxy.muyo-customer.workers.dev', {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer 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'
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: '你是專業的電商客服專員，請用繁體中文回覆。' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      })
     });
     const data = await res.json();
-    const reply = data.reply || '生成失敗，請再試一次';
+    const reply = data.choices?.[0]?.message?.content || '生成失敗，請再試一次';
 
     area.innerHTML = `
       <div class="result-box">

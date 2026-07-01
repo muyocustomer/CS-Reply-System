@@ -944,11 +944,22 @@ function replyField(r, i) {
     <div class="ai-box" id="reply-${i}" style="margin-bottom:10px">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
         <input class="input" id="rtype-${i}" placeholder="問題類型（例如：尺寸說明、材質問題）" value="${escH(r.type||'')}" style="flex:1;padding:6px 10px;font-size:12px">
+        <button class="btn btn-success btn-xs" onclick="copyReplyContent(${i},this)" title="複製話術">📋</button>
         <button class="btn btn-danger btn-xs" onclick="removeReply(${i})">✕</button>
       </div>
       <textarea class="input textarea" id="rcontent-${i}" style="min-height:80px;font-size:12px" placeholder="回覆內容...">${escH(r.content||'')}</textarea>
     </div>
   `;
+}
+
+window.copyReplyContent = function(i, btn) {
+  const text = document.getElementById('rcontent-' + i)?.value;
+  if(text) {
+    navigator.clipboard.writeText(text);
+    btn.textContent = '✓';
+    setTimeout(() => btn.textContent = '📋', 1500);
+    showToast('已複製！');
+  }
 }
 
 window.addReplyField = function() {

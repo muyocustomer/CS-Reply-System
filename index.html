@@ -898,45 +898,112 @@ window.openNewProduct = function() {
 window.openEditProduct = function(id) {
   editingProductId = id;
   renderProductList();
-  renderProductDetail(id);
+  renderProductDetail(id, false);
 }
 
-function renderProductDetail(id) {
+function renderProductDetail(id, editMode=false) {
   const p = id ? products.find(x => x.id === id) : null;
   const replies = p?.replies || [];
   const el = document.getElementById('product-detail');
 
+  if(!p) {
+    // 新增模式
+    el.innerHTML = `
+      <div style="margin-bottom:16px;display:flex;align-items:center;gap:8px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);flex:1">新增商品</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">產編 *</label>
+          <input class="input" id="p-sku" placeholder="例如：AB-001">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">商品名稱 *</label>
+          <input class="input" id="p-name" placeholder="例如：經典連帽外套">
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-head">
+        <div class="section-title">回覆話術</div>
+        <button class="btn btn-ghost btn-sm" onclick="addReplyField()">＋ 新增話術</button>
+      </div>
+      <div id="replies-area">
+        <div class="empty-state" style="padding:20px"><p>還沒有話術<br>點「＋ 新增話術」加入</p></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveProductForm('')">建立商品</button>
+        <button class="btn btn-ghost" onclick="cancelProductEdit()">取消</button>
+      </div>
+    `;
+    return;
+  }
+
+  if(editMode) {
+    // 編輯模式
+    el.innerHTML = `
+      <div style="margin-bottom:16px;display:flex;align-items:center;gap:8px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);flex:1">編輯商品話術</div>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteProduct('${p.id}')">刪除商品</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">產編 *</label>
+          <input class="input" id="p-sku" value="${escH(p.sku||'')}">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">商品名稱 *</label>
+          <input class="input" id="p-name" value="${escH(p.name||'')}">
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="section-head">
+        <div class="section-title">回覆話術</div>
+        <button class="btn btn-ghost btn-sm" onclick="addReplyField()">＋ 新增話術</button>
+      </div>
+      <div id="replies-area">
+        ${replies.map((r,i) => replyField(r, i)).join('')}
+        ${replies.length===0 ? '<div class="empty-state" style="padding:20px"><p>還沒有話術<br>點「＋ 新增話術」加入</p></div>' : ''}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveProductForm('${p.id}')">儲存變更</button>
+        <button class="btn btn-ghost" onclick="openEditProduct('${p.id}')">取消</button>
+      </div>
+    `;
+    return;
+  }
+
+  // 預覽模式（預設）
   el.innerHTML = `
-    <div style="margin-bottom:16px;display:flex;align-items:center;gap:8px">
-      <div style="font-size:14px;font-weight:700;color:var(--text);flex:1">${p ? '編輯商品話術' : '新增商品'}</div>
-      ${p ? `<button class="btn btn-danger btn-sm" onclick="confirmDeleteProduct('${p.id}')">刪除</button>` : ''}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-      <div class="form-group" style="margin:0">
-        <label class="form-label">產編 *</label>
-        <input class="input" id="p-sku" placeholder="例如：AB-001" value="${escH(p?.sku||'')}">
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:8px">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:var(--text)">${escH(p.name||'未命名')}</div>
+        <div style="font-size:12px;color:var(--blue);font-family:'DM Mono',monospace;font-weight:600;margin-top:2px">${escH(p.sku||'')}</div>
       </div>
-      <div class="form-group" style="margin:0">
-        <label class="form-label">商品名稱 *</label>
-        <input class="input" id="p-name" placeholder="例如：經典連帽外套" value="${escH(p?.name||'')}">
-      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="renderProductDetail('${p.id}', true)">✏️ 編輯</button>
     </div>
     <div class="divider"></div>
-    <div class="section-head">
-      <div class="section-title">回覆話術</div>
-      <button class="btn btn-ghost btn-sm" onclick="addReplyField()">＋ 新增話術</button>
-    </div>
-    <div id="replies-area">
-      ${replies.map((r,i) => replyField(r, i)).join('')}
-      ${replies.length===0 ? `<div class="empty-state" style="padding:20px"><p>還沒有話術<br>點「＋ 新增話術」加入</p></div>` : ''}
-    </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="saveProductForm('${p?.id||''}')">
-        ${p ? '儲存變更' : '建立商品'}
-      </button>
-      <button class="btn btn-ghost" onclick="cancelProductEdit()">取消</button>
-    </div>
+    ${replies.length === 0 ? '<div class="empty-state"><p>還沒有回覆話術<br>點「編輯」來新增</p></div>' : ''}
+    ${replies.map((r,i) => `
+      <div class="preview-card" style="margin-bottom:10px">
+        <div class="preview-header">
+          <div style="font-size:12px;font-weight:700;color:var(--blue)">${escH(r.type||'話術 '+(i+1))}</div>
+          <button class="btn btn-success btn-xs" onclick="copyProductReply(${i},'${p.id}',this)" style="margin-left:auto">📋 複製</button>
+        </div>
+        <div class="preview-body" style="margin-top:8px">${escH(r.content||'')}</div>
+      </div>
+    `).join('')}
   `;
+}
+
+window.copyProductReply = function(idx, productId, btn) {
+  const p = products.find(x => x.id === productId);
+  const text = (p?.replies||[])[idx]?.content;
+  if(text) {
+    navigator.clipboard.writeText(text);
+    btn.textContent = '✓ 已複製';
+    setTimeout(() => btn.textContent = '📋 複製', 1500);
+    showToast('已複製！');
+  }
 }
 
 function replyField(r, i) {
@@ -1023,7 +1090,7 @@ window.confirmDeleteProduct = async function(id) {
 window.cancelProductEdit = function() {
   editingProductId = null;
   renderProductList();
-  document.getElementById('product-detail').innerHTML = `<div class="preview-empty" style="height:200px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><p>點選左側商品<br>即可管理回覆話術</p></div>`;
+  document.getElementById('product-detail').innerHTML = '<div class="preview-empty" style="height:200px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><p>點選左側商品<br>即可查看回覆話術</p></div>';
 }
 
 // ─── Init ────────────────────────────────────────────────────
